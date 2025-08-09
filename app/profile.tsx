@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, User, Settings, Bell, HelpCircle, LogOut } from 'lucide-react-native';
+import { ArrowLeft, User, Settings, Bell, CircleHelp as HelpCircle, LogOut } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
