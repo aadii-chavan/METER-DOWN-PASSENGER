@@ -88,17 +88,17 @@ export default function LocationButton({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(245, 203, 92, 0.1)',
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: 'rgba(245, 203, 92, 0.3)',
   },
   disabled: {
     opacity: 0.5,

@@ -12,13 +12,17 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  ImageBackground,
+  Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowLeft, Clock, Plane, Building2, Wrench } from 'lucide-react-native';
+import { ArrowLeft, Clock, Plane, Building2, Wrench, MapPin } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LocationButton from '../components/LocationButton';
 import { LocationService, LocationData } from '../utils/locationService';
 import { isSuggestionInPune } from '../utils/locationService';
+
+const { width, height } = Dimensions.get('window');
 
 interface LocationSuggestion {
   id: string;
@@ -41,16 +45,11 @@ export default function EnterLocationScreen() {
   const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
-  
-  // Remove distanceCache and all distance logic
-
-  // Remove formatDistance and calculateDistance functions
 
   const handleBack = () => {
     router.back();
   };
 
-  // Check location permission and preload location on component mount
   useEffect(() => {
     checkLocationPermission();
     const initializeLocation = async () => {
@@ -103,7 +102,7 @@ export default function EnterLocationScreen() {
       case 'office':
         return Wrench;
       default:
-        return Clock; // Default icon for 'place' type
+        return MapPin;
     }
   };
 
@@ -179,12 +178,10 @@ export default function EnterLocationScreen() {
         setIsLoadingLocation(false);
       }
     } else {
-      // Handle regular suggestion selection
       if (activeInput === 'pickup') {
         setPickupLocation(suggestion.name);
       } else {
         setDropLocation(suggestion.name);
-        // Check if selected drop location is in Pune
         if (!isSuggestionInPune(suggestion)) {
           Alert.alert('Notice', 'Service at your place is not available at the moment.');
         }
@@ -194,151 +191,176 @@ export default function EnterLocationScreen() {
     Keyboard.dismiss();
   };
 
+  const handleContinue = () => {
+    if (pickupLocation && dropLocation) {
+      // Navigate to next screen or handle booking
+      Alert.alert('Booking', `From: ${pickupLocation}\nTo: ${dropLocation}`);
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
-      {/* Fixed Header with proper safe area padding */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <ArrowLeft size={24} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Fixed Location Container with proper spacing */}
-      <View style={styles.fixedLocationContainer}>
-        {/* Pickup Location */}
-        <View style={styles.locationRow}>
-          <View style={styles.locationDot}>
-            <View style={styles.pickupDot} />
-          </View>
-          <TextInput
-            style={[styles.locationInput, activeInput === 'pickup' && styles.activeInput]}
-            value={pickupLocation}
-            onChangeText={(text) => handleLocationSearch(text, 'pickup')}
-            placeholder="Starting from?"
-            placeholderTextColor="#999"
-            onFocus={() => setActiveInput('pickup')}
-            autoFocus={true}
-          />
-          <LocationButton
-            onLocationReceived={handleLocationReceived}
-            onError={handleLocationError}
-            size="small"
-            disabled={!hasLocationPermission}
-          />
-        </View>
-
-        {/* Connecting Line */}
-        <View style={styles.connectingLine} />
-
-        {/* Drop Location */}
-        <View style={styles.locationRow}>
-          <View style={styles.locationDot}>
-            <View style={styles.dropDot} />
-          </View>
-          <TextInput
-            style={[styles.locationInput, activeInput === 'drop' && styles.activeInput]}
-            value={dropLocation}
-            onChangeText={(text) => handleLocationSearch(text, 'drop')}
-            placeholder="Where are you going?"
-            placeholderTextColor="#999"
-            onFocus={() => setActiveInput('drop')}
-          />
-          {dropLocation.length > 0 && (
-            <TouchableOpacity 
-              style={styles.clearButton}
-              onPress={() => {
-                setDropLocation('');
-                setSuggestions([]);
-              }}
-            >
-              <Text style={styles.clearButtonText}>×</Text>
+    <ImageBackground
+      source={{
+        uri: 'https://images.pexels.com/photos/739407/pexels-photo-739407.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      }}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay}>
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="light-content" backgroundColor="rgba(0,0,0,0.3)" translucent />
+          
+          {/* Header */}
+          <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <ArrowLeft size={24} color="#e8eddf" />
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Scrollable Content */}
-      <ScrollView 
-        style={styles.scrollContent}
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Search Suggestions */}
-        {suggestions.length > 0 ? (
-          <View style={styles.suggestionsContainer}>
-            {isLoadingSuggestions && (
-              <View style={{ alignItems: 'center', padding: 10 }}>
-                <ActivityIndicator size="small" color="#f5cb5c" />
-              </View>
-            )}
-            {suggestions.map((suggestion) => {
-              const IconComponent = getIconForType(suggestion.type);
-              const isCurrentLocation = suggestion.id === 'current-location';
-              
-              // Only show "Use Current Location" for pickup field
-              if (isCurrentLocation && activeInput === 'drop') {
-                return null;
-              }
-              
-              // Debug: Log suggestion details
-              console.log('Suggestion:', {
-                name: suggestion.name,
-                distance: suggestion.distance,
-                coordinates: suggestion.coordinates,
-                currentLocation: currentLocation
-              });
-              
-              return (
-                <TouchableOpacity
-                  key={suggestion.id}
-                  style={styles.suggestionItem}
-                  onPress={() => handleSuggestionSelect(suggestion)}
-                  disabled={isCurrentLocation && isLoadingLocation}
-                >
-                  <View style={styles.suggestionIcon}>
-                    {isCurrentLocation && isLoadingLocation ? (
-                      <ActivityIndicator size="small" color="#f5cb5c" />
-                    ) : (
-                      <IconComponent size={20} color="#666" />
-                    )}
-                  </View>
-                  <View style={styles.suggestionContent}>
-                    <Text style={styles.suggestionName}>{suggestion.name}</Text>
-                    <Text style={styles.suggestionAddress}>{suggestion.address}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            <Text style={styles.headerTitle}>Enter Location</Text>
+            <View style={{ width: 40 }} />
           </View>
-        ) : (
-          !isLoadingSuggestions && ((activeInput === 'drop' && dropLocation.length > 0) || (activeInput === 'pickup' && pickupLocation.length > 0)) && (
-            <View style={{ alignItems: 'center', padding: 16 }}>
-              <Text style={{ color: '#999' }}>No results found</Text>
-            </View>
-          )
-        )}
 
-        {/* Add some bottom padding */}
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </SafeAreaView>
+          {/* Main Content Card */}
+          <View style={styles.contentCard}>
+            {/* Location Input Container */}
+            <View style={styles.locationContainer}>
+              <Text style={styles.cardTitle}>Plan Your Journey</Text>
+              
+              {/* Pickup Location */}
+              <View style={styles.locationRow}>
+                <View style={styles.locationDot}>
+                  <View style={styles.pickupDot} />
+                </View>
+                <TextInput
+                  style={[styles.locationInput, activeInput === 'pickup' && styles.activeInput]}
+                  value={pickupLocation}
+                  onChangeText={(text) => handleLocationSearch(text, 'pickup')}
+                  placeholder="Starting from?"
+                  placeholderTextColor="rgba(36, 36, 35, 0.5)"
+                  onFocus={() => setActiveInput('pickup')}
+                  autoFocus={true}
+                />
+                <LocationButton
+                  onLocationReceived={handleLocationReceived}
+                  onError={handleLocationError}
+                  size="small"
+                  disabled={!hasLocationPermission}
+                />
+              </View>
+
+              {/* Connecting Line */}
+              <View style={styles.connectingLine} />
+
+              {/* Drop Location */}
+              <View style={styles.locationRow}>
+                <View style={styles.locationDot}>
+                  <View style={styles.dropDot} />
+                </View>
+                <TextInput
+                  style={[styles.locationInput, activeInput === 'drop' && styles.activeInput]}
+                  value={dropLocation}
+                  onChangeText={(text) => handleLocationSearch(text, 'drop')}
+                  placeholder="Where are you going?"
+                  placeholderTextColor="rgba(36, 36, 35, 0.5)"
+                  onFocus={() => setActiveInput('drop')}
+                />
+                {dropLocation.length > 0 && (
+                  <TouchableOpacity 
+                    style={styles.clearButton}
+                    onPress={() => {
+                      setDropLocation('');
+                      setSuggestions([]);
+                    }}
+                  >
+                    <Text style={styles.clearButtonText}>×</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Continue Button */}
+              {pickupLocation && dropLocation && (
+                <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+                  <Text style={styles.continueButtonText}>Continue</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Suggestions */}
+            <ScrollView 
+              style={styles.suggestionsScroll}
+              contentContainerStyle={styles.suggestionsContainer}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {isLoadingSuggestions && (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#f5cb5c" />
+                  <Text style={styles.loadingText}>Searching...</Text>
+                </View>
+              )}
+              
+              {suggestions.length > 0 && suggestions.map((suggestion) => {
+                const IconComponent = getIconForType(suggestion.type);
+                const isCurrentLocation = suggestion.id === 'current-location';
+                
+                if (isCurrentLocation && activeInput === 'drop') {
+                  return null;
+                }
+                
+                return (
+                  <TouchableOpacity
+                    key={suggestion.id}
+                    style={styles.suggestionItem}
+                    onPress={() => handleSuggestionSelect(suggestion)}
+                    disabled={isCurrentLocation && isLoadingLocation}
+                  >
+                    <View style={styles.suggestionIcon}>
+                      {isCurrentLocation && isLoadingLocation ? (
+                        <ActivityIndicator size="small" color="#f5cb5c" />
+                      ) : (
+                        <IconComponent size={20} color="#f5cb5c" />
+                      )}
+                    </View>
+                    <View style={styles.suggestionContent}>
+                      <Text style={styles.suggestionName}>{suggestion.name}</Text>
+                      <Text style={styles.suggestionAddress}>{suggestion.address}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {!isLoadingSuggestions && suggestions.length === 0 && 
+               ((activeInput === 'drop' && dropLocation.length > 0) || (activeInput === 'pickup' && pickupLocation.length > 0)) && (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No results found</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </SafeAreaView>
+      </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 20,
   },
   backButton: {
     width: 40,
@@ -346,144 +368,192 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    // Add margin to ensure it's not cut off
-    marginTop: Platform.OS === 'ios' ? 10 : 5,
-  },
-  fixedLocationContainer: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 25,
-    paddingVertical: 15,
-    marginHorizontal: 20,
-    marginTop: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    backgroundColor: 'rgba(36, 36, 35, 0.8)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.25,
     shadowRadius: 4,
-    elevation: 0.02,
+    elevation: 5,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#e8eddf',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  contentCard: {
+    flex: 1,
+    backgroundColor: '#e8eddf',
+    marginHorizontal: 20,
+    marginBottom: 100,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  locationContainer: {
+    padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(36, 36, 35, 0.1)',
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#242423',
+    marginBottom: 24,
+    textAlign: 'center',
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 5,
+    marginVertical: 8,
   },
   locationDot: {
     width: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 16,
   },
   pickupDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#000',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#242423',
   },
   dropDot: {
-    width: 8,
-    height: 8,
+    width: 10,
+    height: 10,
     backgroundColor: '#f5cb5c',
+    borderRadius: 2,
   },
   connectingLine: {
     width: 2,
-    height: 15,
-    backgroundColor: '#f5cb5c',
+    height: 20,
+    backgroundColor: 'rgba(245, 203, 92, 0.5)',
     marginLeft: 9,
-    marginVertical: 5,
+    marginVertical: 4,
   },
   locationInput: {
     flex: 1,
     fontSize: 16,
     fontFamily: 'Poppins-Regular',
-    color: '#000',
-    paddingVertical: 8,
-    paddingHorizontal: 2,
+    color: '#242423',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   activeInput: {
-    color: '#000',
-    fontWeight: '500',
+    borderWidth: 2,
+    borderColor: '#f5cb5c',
+    shadowOpacity: 0.15,
   },
   clearButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#e0e0e0',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(36, 36, 35, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
   },
   clearButtonText: {
-    fontSize: 18,
-    color: '#666',
+    fontSize: 20,
+    color: '#242423',
     fontWeight: 'bold',
   },
-  scrollContent: {
-    flex: 1,
-    marginTop: 10,
+  continueButton: {
+    backgroundColor: '#f5cb5c',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  scrollContainer: {
-    paddingBottom: 20,
+  continueButtonText: {
+    fontSize: 18,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#242423',
+  },
+  suggestionsScroll: {
+    flex: 1,
   },
   suggestionsContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: '#242423',
+    marginLeft: 12,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 12,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 0.02,
+    elevation: 3,
   },
   suggestionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f8f8f8',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(245, 203, 92, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   suggestionContent: {
     flex: 1,
   },
   suggestionName: {
     fontSize: 16,
-    fontFamily: 'Poppins-Regular',
-    color: '#333',
-    marginBottom: 2,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#242423',
+    marginBottom: 4,
   },
   suggestionAddress: {
     fontSize: 14,
     fontFamily: 'Poppins-Regular',
-    color: '#666',
+    color: 'rgba(36, 36, 35, 0.7)',
     lineHeight: 18,
   },
-  suggestionDistance: {
-    fontSize: 14,
-    fontFamily: 'Poppins-SemiBold',
-    color: '#f5cb5c',
-    marginLeft: 10,
-    backgroundColor: '#fff5e6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+  noResultsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
   },
-  bottomPadding: {
-    height: 20,
+  noResultsText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
+    color: 'rgba(36, 36, 35, 0.5)',
   },
 });
